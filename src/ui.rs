@@ -62,9 +62,6 @@ pub struct Ui {
 	
 	timer: Option<IntervalSubscription>,
 	
-	//timer: Option<i32>,
-	//timer_closure: wasm_bindgen::closure::Closure<dyn std::ops::FnMut()>,
-
 	#[allow(dead_code)]
 	play_pause_button_event: RegisteredHtmlEvent<'static>,
 	
@@ -144,12 +141,6 @@ impl Ui {
 			(*(render_loop_s.upgrade().unwrap().borrow_mut())).as_mut().unwrap().render_loop();
     	}) as Box<dyn FnMut(i32)>));    	
 
-/*
-    	let timer_closure_s = Rc::downgrade(&s);
-    	let timer_closure = Closure::wrap(Box::new(move || {
-			(*(timer_closure_s.upgrade().unwrap().borrow_mut())).as_mut().unwrap().universe.tick();
-		}) as Box<dyn FnMut()>);*/
-	
     	let play_pause_button_s = Rc::downgrade(&s);
     	let clear_button_s = Rc::downgrade(&s);
     	let randomize_button_s = Rc::downgrade(&s);
@@ -165,7 +156,6 @@ impl Ui {
 			universe: Universe::new(WIDTH, HEIGHT),
 			render_loop_closure,
 			timer: None,
-			//timer_closure,
 			
 			play_pause_button_event : play_pause_button.events().add_event_listener("click", Box::new(move |_| {
 				(*(play_pause_button_s.upgrade().unwrap().borrow_mut())).as_mut().unwrap().play_pause();
@@ -262,19 +252,6 @@ impl Ui {
 	}
 	
 	fn reset_timer(& mut self) {
-		/*match self.timer {
-			Some(t) => self.window.clear_interval_with_handle(t),
-			None => {}
-		}
-		
-		let delay = 1.0 / self.ticks_per_second_input.value_as_number();
-		let timer = self.window.set_interval_with_callback_and_timeout_and_arguments_0(
-			self.timer_closure.as_ref().unchecked_ref(),
-			(delay * 1000.0) as i32)
-			.expect("Timer not set");
-			
-		self.timer = Some(timer);*/
-		
     	let welf = self.welf.clone();
 		let delay = (1.0 / self.ticks_per_second_input.value_as_number() * 1000.0) as i32;
 		let timer = self.window.set_interval(Box::new(move || {
