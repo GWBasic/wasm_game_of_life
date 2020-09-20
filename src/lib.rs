@@ -30,8 +30,8 @@ pub fn start() {
     // *4: Move the UI to a separate file (ui.rs)
     // *5: Rename "State" to "Ui"
     // *6: See if I can get rid of the lifetime parameter on State/Ui
-    // 7: Clean up timer closure
-    // 8: Clean up canvas closures
+    // *7: Clean up timer closure
+    // *8: Clean up canvas closures
     // 9: Maybe publish crate to simplify HTML events?
     // 10: Static constants
     // *Declare state without events, use Rc<State>, register events on a clone, get rid of global state

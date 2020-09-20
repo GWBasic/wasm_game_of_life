@@ -1,5 +1,8 @@
 use wasm_bindgen::JsCast;
 
+use std::cell::RefCell;
+use std::rc::Rc;
+
 extern crate web_sys;
 use web_sys::Element;
 use web_sys::Event;
@@ -87,8 +90,18 @@ pub struct IntervalSubscription {
 	closure: wasm_bindgen::closure::Closure<dyn std::ops::FnMut()>,
 }
 
+// Simplified use of animation frame callbacks
+pub struct AnimationFrameRequester {
+	#[allow(dead_code)]
+	window: Window,
+
+	#[allow(dead_code)]
+	render_loop_closure: Rc<RefCell<Option<Closure<dyn std::ops::FnMut(i32)>>>>,
+}
+
 pub trait WindowExt {
 	fn set_interval(&self, handler: Box<dyn Fn() -> ()>, delay: i32) -> Result<IntervalSubscription, JsValue>;
+	fn prepare_animation_frame_callback(&self, handler: Box<dyn Fn(i32) -> ()>) -> AnimationFrameRequester;
 }
 
 impl WindowExt for Window {
@@ -103,10 +116,31 @@ impl WindowExt for Window {
 			})
 		}
 	}
+
+	fn prepare_animation_frame_callback(&self, handler: Box<dyn Fn(i32) -> ()>) -> AnimationFrameRequester {
+    	// TODO: Hack for requestAnimationFrame loop
+		// https://github.com/bzar/wasm-pong-rs/blob/master/src/lib.rs
+	    let render_loop_closure = Rc::new(RefCell::new(None));
+    	let g = render_loop_closure.clone();
+    	*g.borrow_mut() = Some(Closure::wrap(Box::new(move |animation_id| handler(animation_id)) as Box<dyn FnMut(i32)>));    	
+
+		AnimationFrameRequester {
+			window: self.clone(),
+			render_loop_closure
+		}
+	}
 }
 
 impl<'a> Drop for IntervalSubscription {
 	fn drop(&mut self) {
 		self.window.clear_interval_with_handle(self.timer);
+	}
+}
+
+impl AnimationFrameRequester {
+	#[allow(dead_code)]
+	pub fn request_animation_frame(&self) -> Result<i32, JsValue> {
+    	self.window.request_animation_frame(
+   			self.render_loop_closure.borrow().as_ref().unwrap().as_ref().unchecked_ref())
 	}
 }

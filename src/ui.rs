@@ -13,7 +13,6 @@ use web_sys::HtmlInputElement;
 use web_sys::MouseEvent;
 use web_sys::Window;
 use wasm_bindgen::JsValue;
-use wasm_bindgen::prelude::*;
 
 use std::cell::RefCell;
 use std::cmp::min;
@@ -21,6 +20,7 @@ use std::rc::Rc;
 use std::rc::Weak;
 
 use universe::Universe;
+use web_sys_mixins::AnimationFrameRequester;
 use web_sys_mixins::HtmlExt;
 use web_sys_mixins::IntervalSubscription;
 use web_sys_mixins::RegisteredHtmlEvent;
@@ -58,7 +58,8 @@ pub struct Ui {
 	animation_id: Option<i32>,
 	drawn_generation: i64,
 	universe: Universe,
-	render_loop_closure: Rc<RefCell<Option<Closure<dyn std::ops::FnMut(i32)>>>>,
+	
+	animation_frame_requester: AnimationFrameRequester,
 	
 	timer: Option<IntervalSubscription>,
 	
@@ -132,15 +133,7 @@ impl Ui {
         	.dyn_into::<web_sys::CanvasRenderingContext2d>()
         	.unwrap();
     
-    	// TODO: Hack for requestAnimationFrame loop
-		// https://github.com/bzar/wasm-pong-rs/blob/master/src/lib.rs
-		let render_loop_s = Rc::downgrade(&s);
-	    let render_loop_closure = Rc::new(RefCell::new(None));
-    	let g = render_loop_closure.clone();
-    	*g.borrow_mut() = Some(Closure::wrap(Box::new(move |_| {
-			(*(render_loop_s.upgrade().unwrap().borrow_mut())).as_mut().unwrap().render_loop();
-    	}) as Box<dyn FnMut(i32)>));    	
-
+		let animation_s = Rc::downgrade(&s);
     	let play_pause_button_s = Rc::downgrade(&s);
     	let clear_button_s = Rc::downgrade(&s);
     	let randomize_button_s = Rc::downgrade(&s);
@@ -149,15 +142,17 @@ impl Ui {
     	    
     	let mut f = Ui {
     		welf: Rc::downgrade(&s),
-    		window,
     		context,
 			animation_id: None,
 			drawn_generation: -1,
 			universe: Universe::new(WIDTH, HEIGHT),
-			render_loop_closure,
 			timer: None,
 			
-			play_pause_button_event : play_pause_button.events().add_event_listener("click", Box::new(move |_| {
+			animation_frame_requester: window.prepare_animation_frame_callback(Box::new(move |_| {
+				(*(animation_s.upgrade().unwrap().borrow_mut())).as_mut().unwrap().render_loop();
+			})),
+			
+			play_pause_button_event: play_pause_button.events().add_event_listener("click", Box::new(move |_| {
 				(*(play_pause_button_s.upgrade().unwrap().borrow_mut())).as_mut().unwrap().play_pause();
 			})).unwrap(),
 			
@@ -183,6 +178,7 @@ impl Ui {
 			})).unwrap(),
     		canvas_element,
     		canvas,
+    		window,
     	};
     	
     	f.universe.randomize();
@@ -242,8 +238,7 @@ impl Ui {
 		}
 		
 		if self.timer.is_some() {
-	    	let animation_id = self.window.request_animation_frame(
-    			self.render_loop_closure.borrow().as_ref().unwrap().as_ref().unchecked_ref())
+			let animation_id = self.animation_frame_requester.request_animation_frame()
         		.expect("should register `requestAnimationFrame` OK");
 			self.animation_id = Some(animation_id);
 		} else {
