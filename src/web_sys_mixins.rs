@@ -31,11 +31,7 @@ impl<'a> Drop for RegisteredHtmlEvent<'a> {
 	fn drop(&mut self) {
 		match &self.closure {
 			Some(closure) => {
-				let r = self.event_target.remove_event_listener_with_callback(self.type_, closure.as_ref().unchecked_ref());
-				match r {
-					Err(e) => println!("remove_event_listener_with_callback failed {:?}", e),
-				    _ => ()
-				}
+				self.event_target.remove_event_listener_with_callback(self.type_, closure.as_ref().unchecked_ref()).unwrap();
 			},
 			None => {}
 		};
@@ -48,28 +44,18 @@ pub struct HtmlEvents<'a> {
 
 impl HtmlEvents<'_> {
 	#[allow(dead_code)]
-	pub fn add_event_listener<'a>(&self, type_: &'a str, listener: Box<dyn Fn(Event) -> ()>) -> RegisteredHtmlEvent<'a> {
+	pub fn add_event_listener<'a>(&self, type_: &'a str, listener: Box<dyn Fn(Event) -> ()>) -> Result<RegisteredHtmlEvent<'a>, JsValue> {
 	
    		let closure = Closure::wrap(Box::new(move |event| listener(event)) as Box<dyn FnMut(Event)>);
    	
-    	let r = self.event_target.add_event_listener_with_callback(type_, closure.as_ref().unchecked_ref());
-
-		match r {
-			Err(e) => {
-				println!("event_target.add_event_listener_with_callback failed {:?}", e);
-
-				RegisteredHtmlEvent {
-					event_target: self.event_target.clone(),
-					type_,
-					closure: None
-				}
-			}
+    	match self.event_target.add_event_listener_with_callback(type_, closure.as_ref().unchecked_ref()) {
+			Err(e) => Err(e),
 		    _ => {
-				RegisteredHtmlEvent {
+				Ok(RegisteredHtmlEvent {
 					event_target: self.event_target.clone(),
 					type_,
 					closure: Some(closure)
-				}
+				})
 		    }
 		}
 	}

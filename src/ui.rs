@@ -160,28 +160,28 @@ impl Ui {
 			
 			play_pause_button_event : play_pause_button.events().add_event_listener("click", Box::new(move |_| {
 				(*(play_pause_button_s.upgrade().unwrap().borrow_mut())).as_mut().unwrap().play_pause();
-			})),
+			})).unwrap(),
 			
     		play_pause_button,
     		
     		clear_button_event: clear_button.events().add_event_listener("click", Box::new(move |_| {
     			(*(clear_button_s.upgrade().unwrap().borrow_mut())).as_mut().unwrap().clear();
-    		})),
+    		})).unwrap(),
     		
 			randomize_button_event: randomize_button.events().add_event_listener("click", Box::new(move |_| {
 				(*(randomize_button_s.upgrade().unwrap().borrow_mut())).as_mut().unwrap().randomize();
-			})),
+			})).unwrap(),
 			
 			ticks_per_second_input_event: ticks_per_second_input.events().add_event_listener("click", Box::new(move |_| {
 				(*(ticks_per_second_s.upgrade().unwrap().borrow_mut())).as_mut().unwrap().update_ticks_per_second();
-			})),
+			})).unwrap(),
 
     		ticks_per_second_input,
     		
     		canvas_click_event: canvas.events().add_event_listener("click", Box::new(move |event| {
 				let mouse_event = event.dyn_into::<MouseEvent>().unwrap();
 				(*(canvas_s.upgrade().unwrap().borrow_mut())).as_mut().unwrap().canvas_click(mouse_event);
-			})),
+			})).unwrap(),
     		canvas_element,
     		canvas,
     	};

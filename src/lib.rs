@@ -26,15 +26,16 @@ pub fn start() {
     // *3a: event() function is part of a trait, single struct with add_listener()
     // 3b: StackOverflow post about why cloning the state won't work in add_listener()
     // 3a: "use" mixin that is option.use(|x| {}), for both option, RefCell, Rc, and Rc<RefCell>
+    // Or maybe a new type that encapsulates a weak reference so it's easy to use in closures
     // *4: Move the UI to a separate file (ui.rs)
     // *5: Rename "State" to "Ui"
-    // 6: See if I can get rid of the lifetime parameter on State/Ui
+    // *6: See if I can get rid of the lifetime parameter on State/Ui
     // 7: Clean up timer closure
     // 8: Clean up canvas closures
     // 9: Maybe publish crate to simplify HTML events?
     // 10: Static constants
     // *Declare state without events, use Rc<State>, register events on a clone, get rid of global state
-    // Ui is kept alive due to a cyclic reference, keep alive in a safer manner
+    //* Ui is kept alive due to a cyclic reference, keep alive in a safer manner
     
     // OLD TODOs:
     // 1: Switch this to Rc<RefCell<State>>
