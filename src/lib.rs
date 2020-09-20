@@ -15,10 +15,8 @@ macro_rules! log {
 
 #[wasm_bindgen]
 pub fn start() {
-	/*let ui =*/ Ui::new();
-	
-	// Ui currently has cyclic loops, leaks implicitly
-	//ui.forget();
+	let ui = Ui::new();
+	std::mem::forget(ui);
 }
 
     // New TODOs:

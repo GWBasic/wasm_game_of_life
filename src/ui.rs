@@ -68,7 +68,10 @@ pub struct Ui {
 	randomize_button_event: RegisteredHtmlEvent<'static>,
 	
 	#[allow(dead_code)]
-	ticks_per_second_input_event: RegisteredHtmlEvent<'static>
+	ticks_per_second_input_event: RegisteredHtmlEvent<'static>,
+	
+	#[allow(dead_code)]
+	canvas_click_event: RegisteredHtmlEvent<'static>
 }
 
 
@@ -125,56 +128,65 @@ impl Ui {
         	.dyn_into::<web_sys::CanvasRenderingContext2d>()
         	.unwrap();
     
-    	let mut universe = Universe::new(WIDTH, HEIGHT);
-    	universe.randomize();
-    	
     	// TODO: Hack for requestAnimationFrame loop
 		// https://github.com/bzar/wasm-pong-rs/blob/master/src/lib.rs
-		let render_loop_s = s.clone();
+		let render_loop_s = Rc::downgrade(&s);
 	    let render_loop_closure = Rc::new(RefCell::new(None));
     	let g = render_loop_closure.clone();
     	*g.borrow_mut() = Some(Closure::wrap(Box::new(move |_| {
-			(*(render_loop_s.borrow_mut())).as_mut().unwrap().render_loop();
+			(*(render_loop_s.upgrade().unwrap().borrow_mut())).as_mut().unwrap().render_loop();
     	}) as Box<dyn FnMut(i32)>));    	
 
-    	let timer_closure_s = s.clone();
+    	let timer_closure_s = Rc::downgrade(&s);
     	let timer_closure = Closure::wrap(Box::new(move || {
-			(*(timer_closure_s.borrow_mut())).as_mut().unwrap().universe.tick();
+			(*(timer_closure_s.upgrade().unwrap().borrow_mut())).as_mut().unwrap().universe.tick();
 		}) as Box<dyn FnMut()>);
-
-    	let canvas_s = s.clone();
-		canvas.events().add_event_listener("click", Box::new(move |event| {
-			let mouse_event = event.dyn_into::<MouseEvent>().unwrap();
-			(*(canvas_s.borrow_mut())).as_mut().unwrap().canvas_click(mouse_event);
-		})).forget();
-		
-    	let play_pause_button_s = s.clone();
-    	let clear_button_s = s.clone();
-    	let randomize_button_s = s.clone();
-    	let ticks_per_second_s = s.clone();
+	
+    	let play_pause_button_s = Rc::downgrade(&s);
+    	let clear_button_s = Rc::downgrade(&s);
+    	let randomize_button_s = Rc::downgrade(&s);
+    	let ticks_per_second_s = Rc::downgrade(&s);
+    	let canvas_s = Rc::downgrade(&s);
     	    
     	let mut f = Ui {
     		window,
-    		canvas_element,
-    		canvas,
     		context,
 			animation_id: None,
 			drawn_generation: -1,
-			universe,
+			universe: Universe::new(WIDTH, HEIGHT),
 			render_loop_closure,
 			timer: None,
 			timer_closure,
 			
-			play_pause_button_event : play_pause_button.events().add_event_listener("click", Box::new(move |_| (*(play_pause_button_s.borrow_mut())).as_mut().unwrap().play_pause())),
+			play_pause_button_event : play_pause_button.events().add_event_listener("click", Box::new(move |_| {
+				(*(play_pause_button_s.upgrade().unwrap().borrow_mut())).as_mut().unwrap().play_pause();
+			})),
+			
     		play_pause_button,
     		
-    		clear_button_event: clear_button.events().add_event_listener("click", Box::new(move |_| (*(clear_button_s.borrow_mut())).as_mut().unwrap().clear())),
-			randomize_button_event: randomize_button.events().add_event_listener("click", Box::new(move |_| (*(randomize_button_s.borrow_mut())).as_mut().unwrap().randomize())),
-			ticks_per_second_input_event: ticks_per_second_input.events().add_event_listener("click", Box::new(move |_| (*(ticks_per_second_s.borrow_mut())).as_mut().unwrap().update_ticks_per_second())),
+    		clear_button_event: clear_button.events().add_event_listener("click", Box::new(move |_| {
+    			(*(clear_button_s.upgrade().unwrap().borrow_mut())).as_mut().unwrap().clear();
+    		})),
+    		
+			randomize_button_event: randomize_button.events().add_event_listener("click", Box::new(move |_| {
+				(*(randomize_button_s.upgrade().unwrap().borrow_mut())).as_mut().unwrap().randomize();
+			})),
+			
+			ticks_per_second_input_event: ticks_per_second_input.events().add_event_listener("click", Box::new(move |_| {
+				(*(ticks_per_second_s.upgrade().unwrap().borrow_mut())).as_mut().unwrap().update_ticks_per_second();
+			})),
 
     		ticks_per_second_input,
+    		
+    		canvas_click_event: canvas.events().add_event_listener("click", Box::new(move |event| {
+				let mouse_event = event.dyn_into::<MouseEvent>().unwrap();
+				(*(canvas_s.upgrade().unwrap().borrow_mut())).as_mut().unwrap().canvas_click(mouse_event);
+			})),
+    		canvas_element,
+    		canvas,
     	};
     	
+    	f.universe.randomize();
     	f.pause();
     	
     	s.replace(Some(f));
