@@ -25,7 +25,7 @@ pub fn start() {
     // *3: Not sure what the best way is to share the state value with the event handlers
     // *3a: event() function is part of a trait, single struct with add_listener()
     // 3b: StackOverflow post about why cloning the state won't work in add_listener()
-    // 3a: "use" mixin that is option.use(|x| {}), for both option, RefCell, Rc, and Rc<RefCell>
+    // 3a: "use" mixin that is option.use(|x| {}), for Rc<RefCell<Option and Weak
     // Or maybe a new type that encapsulates a weak reference so it's easy to use in closures
     // *4: Move the UI to a separate file (ui.rs)
     // *5: Rename "State" to "Ui"

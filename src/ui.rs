@@ -18,10 +18,13 @@ use wasm_bindgen::prelude::*;
 use std::cell::RefCell;
 use std::cmp::min;
 use std::rc::Rc;
+use std::rc::Weak;
 
 use universe::Universe;
-use web_sys_mixins::RegisteredHtmlEvent;
 use web_sys_mixins::HtmlExt;
+use web_sys_mixins::IntervalSubscription;
+use web_sys_mixins::RegisteredHtmlEvent;
+use web_sys_mixins::WindowExt;
 
 const CELL_SIZE: u32 = 10; // px
 const WIDTH: u32 = 96;
@@ -45,6 +48,7 @@ struct Constants {
 }
 
 pub struct Ui {
+	welf: Weak<RefCell<Option<Ui>>>,
 	window: Window,
 	canvas_element: Element,
 	canvas: HtmlCanvasElement,
@@ -55,8 +59,11 @@ pub struct Ui {
 	drawn_generation: i64,
 	universe: Universe,
 	render_loop_closure: Rc<RefCell<Option<Closure<dyn std::ops::FnMut(i32)>>>>,
-	timer: Option<i32>,
-	timer_closure: wasm_bindgen::closure::Closure<dyn std::ops::FnMut()>,
+	
+	timer: Option<IntervalSubscription>,
+	
+	//timer: Option<i32>,
+	//timer_closure: wasm_bindgen::closure::Closure<dyn std::ops::FnMut()>,
 
 	#[allow(dead_code)]
 	play_pause_button_event: RegisteredHtmlEvent<'static>,
@@ -137,10 +144,11 @@ impl Ui {
 			(*(render_loop_s.upgrade().unwrap().borrow_mut())).as_mut().unwrap().render_loop();
     	}) as Box<dyn FnMut(i32)>));    	
 
+/*
     	let timer_closure_s = Rc::downgrade(&s);
     	let timer_closure = Closure::wrap(Box::new(move || {
 			(*(timer_closure_s.upgrade().unwrap().borrow_mut())).as_mut().unwrap().universe.tick();
-		}) as Box<dyn FnMut()>);
+		}) as Box<dyn FnMut()>);*/
 	
     	let play_pause_button_s = Rc::downgrade(&s);
     	let clear_button_s = Rc::downgrade(&s);
@@ -149,6 +157,7 @@ impl Ui {
     	let canvas_s = Rc::downgrade(&s);
     	    
     	let mut f = Ui {
+    		welf: Rc::downgrade(&s),
     		window,
     		context,
 			animation_id: None,
@@ -156,7 +165,7 @@ impl Ui {
 			universe: Universe::new(WIDTH, HEIGHT),
 			render_loop_closure,
 			timer: None,
-			timer_closure,
+			//timer_closure,
 			
 			play_pause_button_event : play_pause_button.events().add_event_listener("click", Box::new(move |_| {
 				(*(play_pause_button_s.upgrade().unwrap().borrow_mut())).as_mut().unwrap().play_pause();
@@ -253,7 +262,7 @@ impl Ui {
 	}
 	
 	fn reset_timer(& mut self) {
-		match self.timer {
+		/*match self.timer {
 			Some(t) => self.window.clear_interval_with_handle(t),
 			None => {}
 		}
@@ -264,6 +273,16 @@ impl Ui {
 			(delay * 1000.0) as i32)
 			.expect("Timer not set");
 			
+		self.timer = Some(timer);*/
+		
+    	let welf = self.welf.clone();
+		let delay = (1.0 / self.ticks_per_second_input.value_as_number() * 1000.0) as i32;
+		let timer = self.window.set_interval(Box::new(move || {
+				(*(welf.upgrade().unwrap().borrow_mut())).as_mut().unwrap().universe.tick();
+			}),
+			delay)
+		.expect("Timer not set");
+		
 		self.timer = Some(timer);
 	}
 	
@@ -286,13 +305,7 @@ impl Ui {
 		self.draw_grid();
 		self.draw_cells();
 		
-		match self.timer {
-			Some(t) => {
-				self.window.clear_interval_with_handle(t);
-				self.timer = None;
-			},
-			None => {}
-		}
+		self.timer = None;
 		
 		match self.animation_id {
 			Some(a) => {
