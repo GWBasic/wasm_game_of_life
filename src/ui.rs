@@ -48,35 +48,37 @@ struct Constants {
 }
 
 pub struct Ui {
-	welf: Weak<RefCell<Option<Ui>>>,
+	welf: Option<Weak<RefCell<Ui>>>,
 	window: Window,
 	canvas_element: Element,
 	canvas: HtmlCanvasElement,
 	context: CanvasRenderingContext2d,
 	play_pause_button: HtmlElement,
+	clear_button: HtmlElement,
+	randomize_button: HtmlElement,
 	ticks_per_second_input: HtmlInputElement,
 	animation_id: Option<i32>,
 	drawn_generation: i64,
 	universe: Universe,
 	
-	animation_frame_requester: AnimationFrameRequester,
+	animation_frame_requester: Option<AnimationFrameRequester>,
 	
 	timer: Option<IntervalSubscription>,
 	
 	#[allow(dead_code)]
-	play_pause_button_event: RegisteredHtmlEvent<'static>,
+	play_pause_button_event: Option<RegisteredHtmlEvent<'static>>,
 	
 	#[allow(dead_code)]
-	clear_button_event: RegisteredHtmlEvent<'static>,
+	clear_button_event: Option<RegisteredHtmlEvent<'static>>,
 	
 	#[allow(dead_code)]
-	randomize_button_event: RegisteredHtmlEvent<'static>,
+	randomize_button_event: Option<RegisteredHtmlEvent<'static>>,
 	
 	#[allow(dead_code)]
-	ticks_per_second_input_event: RegisteredHtmlEvent<'static>,
+	ticks_per_second_input_event: Option<RegisteredHtmlEvent<'static>>,
 	
 	#[allow(dead_code)]
-	canvas_click_event: RegisteredHtmlEvent<'static>
+	canvas_click_event: Option<RegisteredHtmlEvent<'static>>
 }
 
 
@@ -91,35 +93,13 @@ impl Constants {
 }
 
 impl Ui {
-    pub fn new() -> Rc<RefCell<Option<Ui>>> {
-    	let s: Rc<RefCell<Option<Ui>>> = Rc::new(RefCell::new(None));
-
+    pub fn new() -> Rc<RefCell<Ui>> {
 	    // get window/document
 	    let window = web_sys::window().expect("Could not get window");
 	    let document = window.document().expect("Could not get document");
     
     	let canvas_element = document.get_element_by_id("game-of-life-canvas")
     		.expect("Could not get game-of-life-canvas element");
-    	
-    	let play_pause_button = document.get_element_by_id("play-pause")
-    		.expect("Could not get the play-pause button")
-    		.dyn_into::<web_sys::HtmlElement>()
-    		.expect("Expected a button");
-    	
-    	let clear_button = document.get_element_by_id("clear")
-    		.expect("Could not get the clear button")
-    		.dyn_into::<web_sys::HtmlElement>()
-    		.expect("Expected a button");
-    	
-    	let randomize_button = document.get_element_by_id("randomize")
-    		.expect("Could not get the randomize button")
-    		.dyn_into::<web_sys::HtmlElement>()
-    		.expect("Expected a button");
-    	
-    	let ticks_per_second_input = document.get_element_by_id("tickspersecond")
-    		.expect("Could not get the ticks per second slider")
-    		.dyn_into::<web_sys::HtmlInputElement>()
-    		.expect("Expected a slider");
     		
     	let canvas = canvas_element.clone().dyn_into::<web_sys::HtmlCanvasElement>()
     		.unwrap();
@@ -132,60 +112,90 @@ impl Ui {
     		.expect("Could not get 2d context")
         	.dyn_into::<web_sys::CanvasRenderingContext2d>()
         	.unwrap();
-    
-		let animation_s = Rc::downgrade(&s);
-    	let play_pause_button_s = Rc::downgrade(&s);
-    	let clear_button_s = Rc::downgrade(&s);
-    	let randomize_button_s = Rc::downgrade(&s);
-    	let ticks_per_second_s = Rc::downgrade(&s);
-    	let canvas_s = Rc::downgrade(&s);
     	    
-    	let mut f = Ui {
-    		welf: Rc::downgrade(&s),
+    	let self_rc = Rc::new(RefCell::new(Ui {
     		context,
 			animation_id: None,
 			drawn_generation: -1,
 			universe: Universe::new(WIDTH, HEIGHT),
 			timer: None,
 			
-			animation_frame_requester: window.prepare_animation_frame_callback(Box::new(move |_| {
-				(*(animation_s.upgrade().unwrap().borrow_mut())).as_mut().unwrap().render_loop();
-			})),
-			
-			play_pause_button_event: play_pause_button.events().add_event_listener("click", Box::new(move |_| {
-				(*(play_pause_button_s.upgrade().unwrap().borrow_mut())).as_mut().unwrap().play_pause();
-			})).unwrap(),
-			
-    		play_pause_button,
-    		
-    		clear_button_event: clear_button.events().add_event_listener("click", Box::new(move |_| {
-    			(*(clear_button_s.upgrade().unwrap().borrow_mut())).as_mut().unwrap().clear();
-    		})).unwrap(),
-    		
-			randomize_button_event: randomize_button.events().add_event_listener("click", Box::new(move |_| {
-				(*(randomize_button_s.upgrade().unwrap().borrow_mut())).as_mut().unwrap().randomize();
-			})).unwrap(),
-			
-			ticks_per_second_input_event: ticks_per_second_input.events().add_event_listener("click", Box::new(move |_| {
-				(*(ticks_per_second_s.upgrade().unwrap().borrow_mut())).as_mut().unwrap().update_ticks_per_second();
-			})).unwrap(),
+    		play_pause_button: document.get_element_by_id("play-pause")
+	    		.expect("Could not get the play-pause button")
+    			.dyn_into::<web_sys::HtmlElement>()
+    			.expect("Expected a button"),
+    			
+    		clear_button: document.get_element_by_id("clear")
+    			.expect("Could not get the clear button")
+    			.dyn_into::<web_sys::HtmlElement>()
+	    		.expect("Expected a button"),
+    			
+    		randomize_button: document.get_element_by_id("randomize")
+    			.expect("Could not get the randomize button")
+    			.dyn_into::<web_sys::HtmlElement>()
+	    		.expect("Expected a button"),
 
-    		ticks_per_second_input,
+    		ticks_per_second_input: document.get_element_by_id("tickspersecond")
+    			.expect("Could not get the ticks per second slider")
+    			.dyn_into::<web_sys::HtmlInputElement>()
+	    		.expect("Expected a slider"),
     		
-    		canvas_click_event: canvas.events().add_event_listener("click", Box::new(move |event| {
-				let mouse_event = event.dyn_into::<MouseEvent>().unwrap();
-				(*(canvas_s.upgrade().unwrap().borrow_mut())).as_mut().unwrap().canvas_click(mouse_event);
-			})).unwrap(),
     		canvas_element,
     		canvas,
     		window,
-    	};
+
+    		welf: None,
+			animation_frame_requester: None,
+			play_pause_button_event: None,
+			clear_button_event: None,
+			randomize_button_event: None,
+			ticks_per_second_input_event: None,
+    		canvas_click_event: None,
+    	}));
+
+		{
+			// TODO: Rename *_s to welf
+			let mut welf = self_rc.borrow_mut();
+
+			(*welf).welf = Some(Rc::downgrade(&self_rc));		
+		
     	
-    	f.universe.randomize();
-    	f.pause();
+			let animation_s = Rc::downgrade(&self_rc);
+			(*welf).animation_frame_requester = Some((*welf).window.prepare_animation_frame_callback(Box::new(move |_| {
+				(*(animation_s.upgrade().unwrap().borrow_mut())).render_loop();
+			})));
+
+    		let play_pause_button_s = Rc::downgrade(&self_rc);
+			(*welf).play_pause_button_event = Some((*welf).play_pause_button.events().add_event_listener("click", Box::new(move |_| {
+				(*(play_pause_button_s.upgrade().unwrap().borrow_mut())).play_pause();
+			})).unwrap());
+
+    		let clear_button_s = Rc::downgrade(&self_rc);
+   			(*welf).clear_button_event = Some((*welf).clear_button.events().add_event_listener("click", Box::new(move |_| {
+				(*(clear_button_s.upgrade().unwrap().borrow_mut())).clear();
+	   		})).unwrap());
+    		    		
+	    	let randomize_button_s = Rc::downgrade(&self_rc);
+			(*welf).randomize_button_event = Some((*welf).randomize_button.events().add_event_listener("click", Box::new(move |_| {
+				(*(randomize_button_s.upgrade().unwrap().borrow_mut())).randomize();
+			})).unwrap());
+			
+    		let ticks_per_second_s = Rc::downgrade(&self_rc);
+			(*welf).ticks_per_second_input_event = Some((*welf).ticks_per_second_input.events().add_event_listener("click", Box::new(move |_| {
+				(*(ticks_per_second_s.upgrade().unwrap().borrow_mut())).update_ticks_per_second();
+			})).unwrap());
+
+    		let canvas_s = Rc::downgrade(&self_rc);
+    		(*welf).canvas_click_event = Some((*welf).canvas.events().add_event_listener("click", Box::new(move |event| {
+				let mouse_event = event.dyn_into::<MouseEvent>().unwrap();
+				(*(canvas_s.upgrade().unwrap().borrow_mut())).canvas_click(mouse_event);
+			})).unwrap());
     	
-    	s.replace(Some(f));
-    	s
+    		(*welf).universe.randomize();
+    		(*welf).pause();
+    	}
+    	
+    	self_rc
 	}
 	
 	pub fn draw_grid(&self) {
@@ -200,7 +210,7 @@ impl Ui {
 
 		// Horizontal lines.
 		for j in 0..self.universe.height() {
-			self.context.move_to(0.0,                           (j * (CELL_SIZE + 1) + 1) as f64);
+			self.context.move_to(0.0, (j * (CELL_SIZE + 1) + 1) as f64);
 			self.context.line_to(((CELL_SIZE + 1) * self.universe.width() + 1) as f64, (j * (CELL_SIZE + 1) + 1) as f64);
 		}
 
@@ -238,24 +248,33 @@ impl Ui {
 		}
 		
 		if self.timer.is_some() {
-			let animation_id = self.animation_frame_requester.request_animation_frame()
-        		.expect("should register `requestAnimationFrame` OK");
-			self.animation_id = Some(animation_id);
+			match &self.animation_frame_requester {
+				Some(animation_frame_requester) => {
+					let animation_id = animation_frame_requester.request_animation_frame()
+    		    		.expect("should register `requestAnimationFrame` OK");
+					self.animation_id = Some(animation_id);
+				},
+				None => self.animation_id = None
+    	    }
 		} else {
 			self.animation_id = None;
 		}
 	}
 	
 	fn reset_timer(& mut self) {
-    	let welf = self.welf.clone();
-		let delay = (1.0 / self.ticks_per_second_input.value_as_number() * 1000.0) as i32;
-		let timer = self.window.set_interval(Box::new(move || {
-				(*(welf.upgrade().unwrap().borrow_mut())).as_mut().unwrap().universe.tick();
-			}),
-			delay)
-		.expect("Timer not set");
-		
-		self.timer = Some(timer);
+		match &self.welf {
+			Some(w) => {
+				let welf = w.clone();
+				let delay = (1.0 / self.ticks_per_second_input.value_as_number() * 1000.0) as i32;
+				let timer = self.window.set_interval(Box::new(move || {
+						(*(welf.upgrade().unwrap().borrow_mut())).universe.tick();
+					}),
+					delay)
+					.expect("Can not set up a timer");
+				self.timer = Some(timer);
+			}
+			None => {}
+		}
 	}
 	
 	fn play_pause(& mut self) {

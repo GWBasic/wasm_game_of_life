@@ -36,8 +36,3 @@ pub fn start() {
     // 10: Static constants
     // *Declare state without events, use Rc<State>, register events on a clone, get rid of global state
     //* Ui is kept alive due to a cyclic reference, keep alive in a safer manner
-    
-    // OLD TODOs:
-    // 1: Switch this to Rc<RefCell<State>>
-    // 2: All of the closures should have weak references to the state object (instead of global)
-    // 3: Refactor registering a closure so it's some kind of a component
