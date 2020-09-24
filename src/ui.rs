@@ -154,45 +154,44 @@ impl Ui {
     	}));
 
 		{
-			// TODO: Rename *_s to welf
-			let mut welf = self_rc.borrow_mut();
+			let mut s = self_rc.borrow_mut();
 
-			(*welf).welf = Some(Rc::downgrade(&self_rc));		
+			let welf = Rc::downgrade(&self_rc);
+			(*s).welf = Some(welf.clone());
 		
-    	
 			let animation_s = Rc::downgrade(&self_rc);
-			(*welf).animation_frame_requester = Some((*welf).window.prepare_animation_frame_callback(Box::new(move |_| {
+			(*s).animation_frame_requester = Some((*s).window.prepare_animation_frame_callback(Box::new(move |_| {
 				(*(animation_s.upgrade().unwrap().borrow_mut())).render_loop();
 			})));
 
     		let play_pause_button_s = Rc::downgrade(&self_rc);
-			(*welf).play_pause_button_event = Some((*welf).play_pause_button.events().add_event_listener("click", Box::new(move |_| {
-				(*(play_pause_button_s.upgrade().unwrap().borrow_mut())).play_pause();
+			(*s).play_pause_button_event = Some((*s).play_pause_button.events().add_event_listener_state("click", &welf, Box::new(move |w, _| {
+				(*(w.upgrade().unwrap().borrow_mut())).play_pause();
 			})).unwrap());
 
     		let clear_button_s = Rc::downgrade(&self_rc);
-   			(*welf).clear_button_event = Some((*welf).clear_button.events().add_event_listener("click", Box::new(move |_| {
+   			(*s).clear_button_event = Some((*s).clear_button.events().add_event_listener("click", Box::new(move |_| {
 				(*(clear_button_s.upgrade().unwrap().borrow_mut())).clear();
 	   		})).unwrap());
     		    		
 	    	let randomize_button_s = Rc::downgrade(&self_rc);
-			(*welf).randomize_button_event = Some((*welf).randomize_button.events().add_event_listener("click", Box::new(move |_| {
+			(*s).randomize_button_event = Some((*s).randomize_button.events().add_event_listener("click", Box::new(move |_| {
 				(*(randomize_button_s.upgrade().unwrap().borrow_mut())).randomize();
 			})).unwrap());
 			
     		let ticks_per_second_s = Rc::downgrade(&self_rc);
-			(*welf).ticks_per_second_input_event = Some((*welf).ticks_per_second_input.events().add_event_listener("click", Box::new(move |_| {
+			(*s).ticks_per_second_input_event = Some((*s).ticks_per_second_input.events().add_event_listener("click", Box::new(move |_| {
 				(*(ticks_per_second_s.upgrade().unwrap().borrow_mut())).update_ticks_per_second();
 			})).unwrap());
 
     		let canvas_s = Rc::downgrade(&self_rc);
-    		(*welf).canvas_click_event = Some((*welf).canvas.events().add_event_listener("click", Box::new(move |event| {
+    		(*s).canvas_click_event = Some((*s).canvas.events().add_event_listener("click", Box::new(move |event| {
 				let mouse_event = event.dyn_into::<MouseEvent>().unwrap();
 				(*(canvas_s.upgrade().unwrap().borrow_mut())).canvas_click(mouse_event);
 			})).unwrap());
     	
-    		(*welf).universe.randomize();
-    		(*welf).pause();
+    		(*s).universe.randomize();
+    		(*s).pause();
     	}
     	
     	self_rc

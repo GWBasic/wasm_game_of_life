@@ -42,6 +42,24 @@ impl HtmlEvents<'_> {
 		    }
 		}
 	}
+
+	#[allow(dead_code)]
+	pub fn add_event_listener_state<'a, T: Clone>(&self, type_: &'a str, state: &T, listener: Box<dyn Fn(&T, Event) -> ()>) -> Result<RegisteredHtmlEvent<'a>, JsValue> {
+   		let closure = Closure::wrap(Box::new({let state = state.clone(); move |event| {
+   			listener(&state, event);
+   		}}) as Box<dyn FnMut(Event)>);
+   	
+    	match self.event_target.add_event_listener_with_callback(type_, closure.as_ref().unchecked_ref()) {
+			Err(e) => Err(e),
+		    _ => {
+				Ok(RegisteredHtmlEvent {
+					event_target: self.event_target.clone(),
+					type_,
+					closure: closure
+				})
+		    }
+		}
+	}
 }
 
 impl<'a> Drop for RegisteredHtmlEvent<'a> {
