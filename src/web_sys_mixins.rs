@@ -44,10 +44,13 @@ impl HtmlEvents<'_> {
 	}
 
 	#[allow(dead_code)]
-	pub fn add_event_listener_state<'a, T: Clone>(&self, type_: &'a str, state: &T, listener: Box<dyn Fn(&T, Event) -> ()>) -> Result<RegisteredHtmlEvent<'a>, JsValue> {
-   		let closure = Closure::wrap(Box::new({let state = state.clone(); move |event| {
-   			listener(&state, event);
-   		}}) as Box<dyn FnMut(Event)>);
+	pub fn add_event_listener_state<'a, T>(&self, type_: &'a str, state: &T, listener: Box<dyn Fn(&T, Event) -> ()>) -> Result<RegisteredHtmlEvent<'a>, JsValue> {
+		let state = state as *const T;
+   		let closure = Closure::wrap(Box::new(move |event| {
+   			unsafe {
+   				listener(&*state, event);
+   			}
+   		}) as Box<dyn FnMut(Event)>);
    	
     	match self.event_target.add_event_listener_with_callback(type_, closure.as_ref().unchecked_ref()) {
 			Err(e) => Err(e),
