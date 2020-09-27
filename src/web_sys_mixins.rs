@@ -25,6 +25,11 @@ pub struct HtmlEvents<'a> {
 	event_target: &'a EventTarget
 }
 
+struct ListenerState<T> {
+	state: T,
+	listener: Box<dyn Fn(&T, Event) -> ()>
+}
+
 impl HtmlEvents<'_> {
 	#[allow(dead_code)]
 	pub fn add_event_listener<'a>(&self, type_: &'a str, listener: Box<dyn Fn(Event) -> ()>) -> Result<RegisteredHtmlEvent<'a>, JsValue> {
@@ -44,12 +49,18 @@ impl HtmlEvents<'_> {
 	}
 
 	#[allow(dead_code)]
-	pub fn add_event_listener_state<'a, T>(&self, type_: &'a str, state: &T, listener: Box<dyn Fn(&T, Event) -> ()>) -> Result<RegisteredHtmlEvent<'a>, JsValue> {
-		let state = state as *const T;
+	pub fn add_event_listener_state<'a, T>(&self, type_: &'a str, state: T, listener: Box<dyn Fn(&T, Event) -> ()>) -> Result<RegisteredHtmlEvent<'a>, JsValue> {
+	
+		let listener_state = Box::new(ListenerState {
+			state,
+			listener
+		});
+		
    		let closure = Closure::wrap(Box::new(move |event| {
-   			unsafe {
-   				listener(&*state, event);
-   			}
+   				let listener = &(&listener_state).listener;
+				let state = (&listener_state).state;			
+
+   				listener(&state, event);
    		}) as Box<dyn FnMut(Event)>);
    	
     	match self.event_target.add_event_listener_with_callback(type_, closure.as_ref().unchecked_ref()) {
@@ -58,7 +69,7 @@ impl HtmlEvents<'_> {
 				Ok(RegisteredHtmlEvent {
 					event_target: self.event_target.clone(),
 					type_,
-					closure: closure
+					closure
 				})
 		    }
 		}
