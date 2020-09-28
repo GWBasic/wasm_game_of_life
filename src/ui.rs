@@ -164,8 +164,7 @@ impl Ui {
 				(*(animation_s.upgrade().unwrap().borrow_mut())).render_loop();
 			})));
 
-    		let play_pause_button_s = Rc::downgrade(&self_rc);
-			(*s).play_pause_button_event = Some((*s).play_pause_button.events().add_event_listener_state("click", &welf, Box::new(move |w, _| {
+			(*s).play_pause_button_event = Some((*s).play_pause_button.events().add_event_listener_state("click", welf.clone(), Box::new(move |w, _| {
 				(*(w.upgrade().unwrap().borrow_mut())).play_pause();
 			})).unwrap());
 
@@ -173,6 +172,14 @@ impl Ui {
    			(*s).clear_button_event = Some((*s).clear_button.events().add_event_listener("click", Box::new(move |_| {
 				(*(clear_button_s.upgrade().unwrap().borrow_mut())).clear();
 	   		})).unwrap());
+    		
+    		/*
+    		
+   			(*s).clear_button_event = Some((*s).clear_button.events().add_event_listener_borrow("click", &s, Box::new(move |s, _| {
+				s.clear();
+	   		})).unwrap());
+    		
+    		*/
     		    		
 	    	let randomize_button_s = Rc::downgrade(&self_rc);
 			(*s).randomize_button_event = Some((*s).randomize_button.events().add_event_listener("click", Box::new(move |_| {
